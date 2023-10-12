@@ -18,6 +18,9 @@ FRevoluteJoint articulacion;
 BrownNoise fx_noise;
 WhiteNoise fx_noise2;
 SoundFile fx_choque;
+SoundFile sonidoFondo;
+SoundFile golazo;
+SoundFile errar;
 
 FCircle tejo;
 
@@ -37,17 +40,18 @@ PImage gol_img;
 boolean uuf = false;
 PImage bu;
 //Menú
+PImage inicio;
+PImage creditos;
 PImage jugar;
 PImage ganaste;
 PImage perdiste;
 PImage enemigo_img;
+PImage controlador_img;
 
 
 String estado;
 
-//SoundFile sonidoFondo;
-//SoundFile golazo;
-//SoundFile errar;
+
 
 float xMap;
 float yMap;
@@ -58,26 +62,35 @@ float velocidadX;
 boolean movEnemigo = false;
 boolean detenerTejo = false;
 int tiempoDetencion = 0;
+float xpuntero = 0;
+float ypuntero = 0;
+boolean choco = false;
 
 float vel_tiempo;
 
 void setup() {
 
-  size(550, 900);
+  size(600, 900);
 
   //iniciamos el mundo
   Fisica.init(this);
   mundo = new FWorld();
   mundo.setGravity(-0, 0);
-  //mundo.setEdges();
+  mundo.setEdges();
 
-  estado = "jugar";
-  enemigo_img = loadImage("enemigo.png");
+  estado = "inicio";
+
+  //imagenes.
+  inicio = loadImage("inicio.png");
+  creditos = loadImage("creditos.png");
   jugar = loadImage ("juega.png");
+  enemigo_img = loadImage("enemigo.png");
+  controlador_img = loadImage("controlador.png");
   gol_img = loadImage ("gool.png");
   bu = loadImage ("buu.png");
   ganaste = loadImage ("ganaste.png");
   perdiste = loadImage ("perdiste.png");
+
   golHecho = millis();
 
   //osc
@@ -90,7 +103,7 @@ void setup() {
   fx_noise = new BrownNoise(this);
   fx_noise2 = new WhiteNoise(this);
   fx_noise.amp(0.05);
-
+  fx_choque = new SoundFile(this, "choque.wav");
 
   //fondo
   contadores = new Contadores();
@@ -112,23 +125,23 @@ void setup() {
   //agrega las imágenes y el contador del tiempo de los pop ups
 
   //carga los sonidos y sus amplitudes
-  //sonidoFondo = new SoundFile (this, "sonidodefondo.mp3");
-  //golazo = new SoundFile (this, "golazo.mp3");
-  //errar = new SoundFile (this, "erra.mp3");
-  //sonidoFondo.loop();
-  //sonidoFondo.amp(.9);
-
+  sonidoFondo = new SoundFile (this, "sonidodefondo.mp3");
+  golazo = new SoundFile (this, "golazo.mp3");
+  errar = new SoundFile (this, "erra.mp3");
+  sonidoFondo.loop();
+  sonidoFondo.amp(.4);
   velocidadX = 15 /((contadores.time)+1);
-  caja_enemigo.setNoStroke();
 }
 
 void draw() {
-  background(50);
+  background(0);
   mundo.step();
   mundo.draw();
 
   xMap = map(tejo.getX(), 65, 450, -1, 1);
   yMap = map(tejo.getY(), 50, 810, 0.0015, 0.015);
+  choco = false;
+
 
   d1 = dist(tejo.getX(), caja_enemigo.getX(), 120, tejo.getY());
 
@@ -136,55 +149,59 @@ void draw() {
   x += velocidadX;
 
   // OSC RECEPTOR
-
   receptor.actualizar(mensajes); //
 
   // Eventos de entrada y salida
   for (Blob b : receptor.blobs) {
     if (b.entro) {
-
       admin.crearPuntero(b);
-
     }
     if (b.salio) {
 
       admin.removerPuntero(b);
     }
     admin.actualizarPuntero(b);
+    xpuntero = admin.xpuntero;
+    ypuntero = admin.ypuntero;
+    choco = admin.choco;
+  }
+  if (choco && !fx_choque.isPlaying()) {
+    fx_choque.play();
   }
 
-  if (estado == "inicio") //lógica del menú, este está hasta que pongas el disco en mitad de la cancha
-  {
-    image(jugar, 0, 0, width, height);
+  if (estado == "inicio") {
+
+    receptor.actualizar(mensajes); //
+
+    background(inicio);
     // contadores.time = 60;
-    //cambiar la posición del mouse por los blobs
-    circle(mouseX, mouseY, 50);
-    if (mouseX > 150 && mouseX < 200 && mouseY > 275 && mouseY < 325)
-    {
+
+    image(controlador_img, xpuntero, ypuntero);
+
+    if (xpuntero > 200 && xpuntero < 400 && ypuntero > 400 && ypuntero < 480) {
       estado = "jugar";
+    }
+
+    if (xpuntero > 200 && xpuntero < 400 && ypuntero > 551 && ypuntero < 635) {
+      estado = "creditos";
     }
   }
 
   if (estado == "jugar") {
 
-    //contadores.tiempo(60, 450, 50);
-    //contadores.marcador(goles, 500, 400);
-    //sonidoFondo.amp(.6);
-    //enemigo comportamiento
+    contadores.tiempo(475, 50);
+    contadores.marcador(goles, 300, 450);
+    sonidoFondo.amp(.3);
 
+    //enemigo comportamiento
     if (contadores.time <= 40) {
       if (caja_enemigo.getX() <= 95 || caja_enemigo.getX() >= 390)
       {
         velocidadX *= -1;
       }
       caja_enemigo.setPosition(caja_enemigo.getX() + velocidadX, 200);
-      tejo.setDamping (0.1);
+      //  tejo.setDamping (0.1);
     }
-    if (contadores.time <= 10)
-    {
-      tejo.setDamping (0.3);
-    }
-
 
     if (abs(tejo.getVelocityX())>5 || abs(tejo.getVelocityY())>5) {
       fx_noise.pan(xMap);
@@ -197,31 +214,31 @@ void draw() {
       fx_noise2.stop();
       fx_noise.stop();
     }
-
     if (tejo.getY() < 70) {
       fueGol = true;
       goles = goles +1;
-      tejo.setPosition(250, 400);
+      tejo.setPosition(200, 700);
       tejo.setVelocity(0, 0);
-      //golazo.play();
-      //golazo.amp(.4);
+      golazo.play();
+      golazo.amp(.4);
 
       golHecho = millis();
     }
 
     if (tejo.getY() > 820) {
       goles = goles -1;
-      tejo.setPosition(250, 500);
+      tejo.setPosition(200, 700);
       tejo.setVelocity(0, 0);
-      //errar.play();
-      //errar.amp(.4);
+      errar.play();
+      errar.amp(.3);
       uuf = true;
       golHecho = millis();
     }
-    //println("cantidad de blobs: " + receptor.blobs.size());
+
     //pop up del gol
     if (fueGol) {
       image(gol_img, width/2-240, height/2-290, 230, 230);
+
       if (millis() - golHecho >= 1500) {
         fueGol = false;
       }
@@ -234,48 +251,44 @@ void draw() {
       }
     }
     //lógica para perder
-    if ( contadores.time <= 0 && goles != objetivo_goles)
-    {
+    if ( (contadores.time <= 0) && (goles < objetivo_goles) || (goles <= -3)) {
+
       estado = "perder";
     }
+    if (goles >= objetivo_goles) {
+      estado ="ganar";
+    }
   }
+
   if (estado=="perder") {
     image(perdiste, 0, 0, width, height);
-    contadores.time = 60;
+    contadores.time = 0;
   }
   //lógica para ganar
-  if (contadores.time >= 0 && goles >= objetivo_goles) {
-    estado ="ganar";
-  }
+
   if (estado == "ganar") {
     image(ganaste, 0, 0, width, height);
     contadores.time = 60;
-    //sonidoFondo.amp(.9);
+    sonidoFondo.amp(.4);
+  }
+  if (estado == "creditos") {
+
+    image (creditos, 0, 0, width, height);
   }
 }
 
 void keyPressed() {
   if (key == CODED) {
     if (keyCode == UP) {
-      goles = goles+1;
-      //golazo.play();
-      //golazo.amp(.4);
-      fueGol = true;
-      golHecho = millis();
-    } else if (keyCode == DOWN) {
-      //errar.play();
-      //errar.amp(.4);
-      uuf = true;
-      golHecho = millis();
-      goles = goles-1;
+      estado = "inicio";
+      contadores = new Contadores();
+      fondo = new Fondo(mundo);
+      goles = 0;
+      tejo.setDamping (0.01);
+      //enemigo
+      caja_enemigo.setPosition(200, 200);
+      sonidoFondo.amp(.4);
+      velocidadX = 15 /((contadores.time)+1);
     }
   }
-  if (key == CODED) {
-    if (keyCode == RIGHT) {
-      tejo.setPosition(174, 300);
-      tejo.setVelocity(0, 0);
-    }
-  }
-}
-void mousePressed() {
 }

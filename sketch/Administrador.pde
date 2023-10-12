@@ -3,6 +3,9 @@ class Administrador {
   ArrayList <Puntero> punteros;
 
   FWorld mundo;
+  float xpuntero;
+  float ypuntero;
+  boolean choco;
 
   Administrador(FWorld mundo_) {
     punteros = new ArrayList<Puntero>();
@@ -43,14 +46,13 @@ class Administrador {
     }
     for (Puntero p : punteros) {
       if (p.id == b.id) {
+        xpuntero = p.x();
+        ypuntero = p.y();
+        choco = p.choco();
         p.setTarget(b.centroidX* width, b.centroidY * height);
         break;
       }
     }
   }
-  void dibujar() {
-    for (Puntero p : punteros) {
-      p.dibujar();
-    }
-  }
+
 }
